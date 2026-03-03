@@ -146,10 +146,22 @@ with st.sidebar:
     st.markdown("## 🚪 Game Settings")
     st.markdown("---")
 
-    n_doors = st.slider("Total doors (N)", 3, 20, S.n_doors, key="sb_ndoors")
-    max_open = n_doors - 2
-    safe_max = max(1, min(S.n_opened_max, max_open))
-    n_opened_max = st.slider("Max doors host can open (k)", 1, max_open, safe_max, key="sb_nopened")
+    n_doors  = st.slider("Total doors (N)", 3, 20, S.n_doors, key="sb_ndoors")
+    max_open = n_doors - 2  # maximum doors host can ever open (always >= 1)
+
+    # Only show the k-slider when there is actually a choice (i.e. N > 3)
+    if max_open > 1:
+        safe_max     = max(1, min(S.n_opened_max, max_open))
+        n_opened_max = st.slider("Max doors host can open (k)", 1, max_open, safe_max, key="sb_nopened")
+    else:
+        # N=3 → only 1 door can ever be opened; skip slider to avoid range error
+        n_opened_max = 1
+        st.markdown(
+            "<div style='font-family:JetBrains Mono;font-size:0.75rem;color:#6b6b80'>"
+            "Doors host opens (k): <b style='color:#e8e4d9'>1</b> (fixed for N=3)</div>",
+            unsafe_allow_html=True
+        )
+
     S.n_opened_max = n_opened_max
 
     if n_doors != S.n_doors:
