@@ -546,10 +546,10 @@ with tab_game:
             fig = go.Figure()
             fig.add_hline(y=p_st_th, line_dash="dot", line_color="rgba(245,166,35,0.3)",
                           annotation_text=f"theory stay {p_st_th:.1%}",
-                          annotation_font_color="#f5a62388", annotation_position="right")
+                          annotation_font_color="rgba(245,166,35,0.5)", annotation_position="right")
             fig.add_hline(y=n_rem_th * p_sw_th, line_dash="dot", line_color="rgba(74,222,128,0.3)",
                           annotation_text=f"theory switch {n_rem_th*p_sw_th:.1%}",
-                          annotation_font_color="#4ade8088", annotation_position="right")
+                          annotation_font_color="rgba(74,222,128,0.5)", annotation_position="right")
             fig.add_trace(go.Scatter(
                 x=xs, y=cum_stay, mode="lines+markers", name="Stay win rate",
                 line=dict(color="#f5a623", width=2.5), marker=dict(size=5), connectgaps=True,
