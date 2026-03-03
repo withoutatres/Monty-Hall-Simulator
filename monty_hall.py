@@ -80,15 +80,24 @@ div[data-testid="stSidebar"] { background: #0a0a10 !important; border-right: 1px
 
 # ── Bayesian math ─────────────────────────────────────────────────────────────
 def compute_posterior(n_doors: int, n_opened: int):
-    """Returns (p_stay, p_each_switch). Works for any n_opened >= 0."""
+    """Returns (p_stay, p_each_switch). Works for any n_opened >= 0.
+
+    Correct Bayesian logic:
+      L(stay door)   = P(host opens k doors | car at player door) = 1
+      L(switch door) = P(host opens k doors | car at specific other door)
+                     = (n-1-k)/(n-1)   [host must avoid that door]
+
+    So the likelihood FAVOURS the switch doors:
+      unnorm_stay   = (1/n) * 1
+      unnorm_switch = (1/n) * (n-1)/(n-1-k)   <-- this is > 1/n, correctly rising
+    """
     if n_doors <= 1:
         return 1.0, 0.0
     n_remaining_others = n_doors - 1 - n_opened
     if n_remaining_others <= 0:
         return 1.0, 0.0
-    lr = (n_doors - 1) / (n_doors - 1 - n_opened)
-    unnorm_stay   = (1 / n_doors) * lr
-    unnorm_switch = (1 / n_doors) * 1.0
+    unnorm_stay   = 1.0 / n_doors
+    unnorm_switch = (1.0 / n_doors) * (n_doors - 1) / (n_doors - 1 - n_opened)
     total = unnorm_stay + n_remaining_others * unnorm_switch
     return unnorm_stay / total, unnorm_switch / total
 
@@ -463,7 +472,7 @@ with tab_game:
             st.markdown(
                 f"<div class='insight-box'>"
                 f"<b style='color:#f5a623'>📊 After {n_currently_open} door{'s' if n_currently_open != 1 else ''} opened</b><br>"
-                f"Likelihood ratio: <b>(N−1)/(N−1−k) = {lr_num}/{lr_den} = {lr_num/lr_den:.3f}</b><br>"
+                f"Switch likelihood boost: <b>(N−1)/(N−1−k) = {lr_num}/{lr_den} = {lr_num/lr_den:.3f}</b><br>"
                 f"Your door (D{S.player_door}): <b style='color:#f5a623'>p = {p_st:.4f}</b> &nbsp;·&nbsp; "
                 f"Each of {n_rem} switch door{'s' if n_rem != 1 else ''}: "
                 f"<b style='color:#4ade80'>p = {p_sw:.4f}</b> &nbsp;·&nbsp; "
@@ -742,8 +751,8 @@ with tab_theory:
             f"<b style='color:#f5a623'>🔍 Bayesian Insight</b> &nbsp; N={t_n_doors}, k={t_n_opened}<br><br>"
             f"Prior: <b>1/{t_n_doors} = {p_prior:.4f}</b> per door. "
             f"After {t_n_opened} door{'s' if t_n_opened != 1 else ''} opened, "
-            f"likelihood ratio = <b>(N−1)/(N−1−k) = {t_n_doors-1}/{t_n_doors-1-t_n_opened} "
-            f"= {(t_n_doors-1)/(t_n_doors-1-t_n_opened):.3f}</b>. "
+            f"switch doors get a likelihood boost of <b>(N−1)/(N−1−k) = {t_n_doors-1}/{t_n_doors-1-t_n_opened} "
+            f"= {(t_n_doors-1)/(t_n_doors-1-t_n_opened):.3f}</b> while the stay door is unchanged. "
             f"Stay door: <b>{p_st_th:.4f}</b> · each of {n_rem_th} switch doors: <b>{p_sw_th:.4f}</b>. "
             f"Total switch advantage: <b style='color:#4ade80'>{p_all_sw / p_st_th:.2f}×</b>."
             f"</div>",
@@ -756,13 +765,23 @@ with tab_theory:
 
 **Likelihoods** — let $E$ = "host opens exactly these $k$ doors":
 
-$$P(E \mid \text{car at door 1}) = 1, \qquad P(E \mid \text{car at door } d^* \neq 1) = \frac{N-1-k}{N-1}$$
+$$P(E \mid \text{car at player's door}) = 1$$
+(host can freely pick any $k$ of the $N-1$ goat doors)
 
-**Posterior via Bayes:**
+$$P(E \mid \text{car at a specific switch door } d^*) = \frac{N-1-k}{N-1}$$
+(host must avoid $d^*$, so picks $k$ from the remaining $N-2$ goats)
+
+Since $\frac{N-1-k}{N-1} < 1$, the host is **less likely** to have opened these specific doors if the car is at a switch door — meaning switch doors carry **more** posterior weight.
+
+**Unnormalised posteriors:**
+
+$$\tilde{p}_\text{stay} = \frac{1}{N} \cdot 1, \qquad \tilde{p}_\text{switch} = \frac{1}{N} \cdot \frac{N-1}{N-1-k}$$
+
+**After normalisation:**
 
 $$P(\text{stay wins}) = \frac{1}{N-k}, \qquad P(\text{each switch door wins}) = \frac{N-1}{(N-k)(N-1-k)}$$
 
-**Total switching advantage:**
+**Total switching advantage** (all switch doors combined vs. staying):
 
 $$\frac{(N-1-k) \cdot P(\text{switch per door})}{P(\text{stay})} = \frac{N-1}{N-1-k}$$
 
