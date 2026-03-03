@@ -447,10 +447,13 @@ with tab_game:
             marker_color=bar_clr,
             marker_line_color="rgba(0,0,0,0.4)", marker_line_width=1,
             text=bar_txt,
-            textposition="outside",
-            textfont=dict(family="JetBrains Mono", size=10, color="#c8c4b9"),
+            textposition="auto",
+            textfont=dict(family="JetBrains Mono", size=12, color="#ffffff"),
+            cliponaxis=False,
+            insidetextanchor="middle",
             hovertemplate="%{x}<br>P = %{y:.4f}<extra></extra>",
         ))
+        y_max = max(bar_val) if bar_val else 1.0
         fig_live.update_layout(
             plot_bgcolor="#16161f", paper_bgcolor="#16161f",
             font=dict(family="Syne", color="#c8c4b9"),
@@ -458,8 +461,9 @@ with tab_game:
             xaxis=dict(showgrid=False, zeroline=False,
                        tickfont=dict(family="JetBrains Mono", size=10)),
             yaxis=dict(showgrid=True, gridcolor="#1e1e2e", zeroline=False,
-                       tickformat=".0%", tickfont=dict(family="JetBrains Mono", size=10)),
-            margin=dict(l=10, r=80, t=20, b=10), height=240,
+                       tickformat=".0%", tickfont=dict(family="JetBrains Mono", size=10),
+                       range=[0, min(y_max * 1.25, 1.05)]),
+            margin=dict(l=10, r=80, t=30, b=10), height=260,
         )
         st.plotly_chart(fig_live, use_container_width=True)
 
