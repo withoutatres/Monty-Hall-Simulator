@@ -398,7 +398,11 @@ with tab_game:
 
         with btn_col2:
             if n_currently_open >= 1:
-                if st.button("✅ Make My Final Choice", type="secondary", use_container_width=True):
+                n_switch_remaining = n_doors - 1 - n_currently_open
+                btn_label = "✅ Make My Final Choice"
+                if n_switch_remaining > 1:
+                    btn_label = "⚠️ Choose Now (multiple doors remain)"
+                if st.button(btn_label, type="secondary", use_container_width=True):
                     S.phase = "decide"
                     st.rerun()
             else:
@@ -473,21 +477,48 @@ with tab_game:
         if p_st > 0 and n_rem > 0:
             lr_num = n_doors - 1
             lr_den = n_doors - 1 - n_currently_open
+            per_door_adv = p_sw / p_st
+
+            if n_rem == 1:
+                # Classic stay vs. switch framing
+                insight_body = (
+                    f"Switch likelihood boost: <b>(N−1)/(N−1−k) = {lr_num}/{lr_den} = {lr_num/lr_den:.3f}</b><br>"
+                    f"Your door (D{S.player_door}): <b style='color:#f5a623'>p = {p_st:.4f}</b> &nbsp;·&nbsp; "
+                    f"Switch door: <b style='color:#4ade80'>p = {p_sw:.4f}</b><br>"
+                    f"<b style='color:#c084fc'>Switching is {per_door_adv:.2f}× better than staying.</b>"
+                )
+            else:
+                # Multiple doors remain — no meaningful "switch" yet
+                insight_body = (
+                    f"Switch likelihood boost: <b>(N−1)/(N−1−k) = {lr_num}/{lr_den} = {lr_num/lr_den:.3f}</b><br>"
+                    f"Your door (D{S.player_door}): <b style='color:#f5a623'>p = {p_st:.4f}</b> &nbsp;·&nbsp; "
+                    f"Each of {n_rem} other doors: <b style='color:#4ade80'>p = {p_sw:.4f}</b><br>"
+                    f"Each other door is <b style='color:#c084fc'>{per_door_adv:.2f}×</b> more likely than yours. "
+                    f"<span style='color:#6b6b80'>"
+                    f"Open more doors to concentrate that probability — switching is most powerful "
+                    f"when only 1 door remains ({n_rem - 1} more opening{'s' if n_rem - 1 != 1 else ''} to go)."
+                    f"</span>"
+                )
+
             st.markdown(
                 f"<div class='insight-box'>"
-                f"<b style='color:#f5a623'>📊 After {n_currently_open} door{'s' if n_currently_open != 1 else ''} opened</b><br>"
-                f"Switch likelihood boost: <b>(N−1)/(N−1−k) = {lr_num}/{lr_den} = {lr_num/lr_den:.3f}</b><br>"
-                f"Your door (D{S.player_door}): <b style='color:#f5a623'>p = {p_st:.4f}</b> &nbsp;·&nbsp; "
-                f"Each of {n_rem} switch door{'s' if n_rem != 1 else ''}: "
-                f"<b style='color:#4ade80'>p = {p_sw:.4f}</b> &nbsp;·&nbsp; "
-                f"Total switch advantage: <b style='color:#c084fc'>{(n_rem * p_sw / p_st):.2f}×</b>"
+                f"<b style='color:#f5a623'>📊 After {n_currently_open} door{'s' if n_currently_open != 1 else ''} opened</b> "
+                f"&nbsp;({n_rem} door{'s' if n_rem != 1 else ''} remaining besides yours)<br>"
+                + insight_body +
                 f"</div>",
                 unsafe_allow_html=True
             )
 
     # ── Decide phase prompt ───────────────────────────────────────────────────
     if S.phase == "decide":
-        st.info(f"👆 Click any door above to make your final choice. Your original pick was **Door {S.player_door}**.")
+        n_switch_remaining = n_doors - 1 - len(S.opened_doors)
+        if n_switch_remaining == 1:
+            st.info(f"👆 Click a door to make your final choice. **Stay** with Door {S.player_door}, or **switch** to the one remaining door.")
+        else:
+            st.warning(
+                f"⚠️ You still have {n_switch_remaining} other doors to choose from — this isn't yet a clean stay-vs-switch decision. "
+                f"Your original pick was **Door {S.player_door}**. Click any door to lock in your choice."
+            )
 
     # ── Outcome ───────────────────────────────────────────────────────────────
     st.markdown("<br>", unsafe_allow_html=True)
@@ -502,13 +533,24 @@ with tab_game:
 
         p_st, p_sw = compute_posterior(n_doors, n_open_used)
         n_rem = n_doors - 1 - n_open_used
+        per_door_adv = p_sw / p_st if p_st > 0 else 0
+        if n_rem == 1:
+            adv_text = (
+                f"P(car at your original door) = <b>{p_st:.4f}</b> &nbsp;·&nbsp; "
+                f"P(car at the switch door) = <b>{p_sw:.4f}</b><br>"
+                f"Switching was <b style='color:#4ade80'>{per_door_adv:.2f}× better</b> than staying."
+            )
+        else:
+            adv_text = (
+                f"P(car at your original door) = <b>{p_st:.4f}</b> &nbsp;·&nbsp; "
+                f"P(car at each of {n_rem} other doors) = <b>{p_sw:.4f}</b><br>"
+                f"Each other door was <b style='color:#4ade80'>{per_door_adv:.2f}×</b> more likely than yours — "
+                f"but with {n_rem} doors still open, this wasn't a clean stay-vs-switch decision."
+            )
         st.markdown(
             f"<div class='insight-box'>"
-            f"<b style='color:#f5a623'>Bayesian odds at your decision</b> ({n_open_used} doors opened)<br>"
-            f"P(car at your original door) = <b>{p_st:.4f}</b> &nbsp;·&nbsp; "
-            f"P(car at each switch door) = <b>{p_sw:.4f}</b><br>"
-            f"Switching gave a <b style='color:#4ade80'>{(n_rem * p_sw / p_st):.2f}× total advantage</b> "
-            f"over staying at the moment you chose."
+            f"<b style='color:#f5a623'>Bayesian odds at your decision</b> ({n_open_used} door{'s' if n_open_used != 1 else ''} opened)<br>"
+            + adv_text +
             f"</div>",
             unsafe_allow_html=True
         )
